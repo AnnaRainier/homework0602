@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+	<meta charset='UTF-8'>
+	<title>chat group 29</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+	<link rel="stylesheet" href="style.css">
+	<script src='/socket.io/socket.io.js'></script>
+</head>
+<body>
+	<script>
+		var socket = io();
+		function setUserName() {
+			socket.emit('setUserName', document.getElementById('name').value);
+		}
+
+		var user;
+		var time;
+
+		socket.on('userExists', function (data) {
+			document.getElementById('error').innerHTML = data;
+		});
+
+		socket.on('userSet', function (data) {
+			user = data.username;
+			var date = new Date();
+			document.body.innerHTML = '\
+			<div class="container"> \
+			 <div class="row">\
+				<div class="col-md-10"> \
+					<div class="form-group"> \
+						<input type="text" class="form-control" id="message" placeholder="пиши здесь..."/>\
+						<button type="button" class="btn btn-primary" name="button" onclick="sendMessage()" onload="newUser()">Отправить</button>\
+						<div id="message-container"></div> \
+					</div>\
+				</div> \
+			</div> \
+		</div>';
+		});
+
+		function newUser () {
+			var date = new Date;
+			var joinMessage = user + ' joined chat ';
+				socket.emit('message', {user: user, message: joinMessage, time: (date.getHours() + ':' + date.getMinutes())})
+			};
+
+		var myInterval = setInterval(function () {
+			if(user) {
+				newUser();
+				clearInterval(myInterval);
+			}
+		},1000);
+
+		function sendMessage() {
+			var messageData = document.getElementById('message').value;
+			var date = new Date();
+			var messageFilter = /^<.+/;
+			if (messageData && messageData.match(messageFilter)) {
+				socket.emit('wrongContent');
+				messageData = messageData.replace(messageFilter, 'сообщение удалено');
+				socket.emit('message', {user: user, message: messageData, time: (date.getHours() + ':' + date.getMinutes())});
+			} else if (messageData) {
+				socket.emit('message', {user: user, message: messageData, time: (date.getHours() + ':' + date.getMinutes())});
+			}
+			else {
+				socket.emit('warning');
+				alert('сообщение не должно быть пустым');
+			}
+
+			document.getElementById('message').value = '';
+		}
+		var uniqueDate;
+		/*
+		будет редактировать сообщения только у конкретного пользователя, т.к. нет обновления контента на странице без перезагрузки
+		function editMessage() {
+			var date = new Date();
+			var newInput = document.createElement('input');
+			document.body.appendChild(newInput);
+			var editInput = document.getElementsByTagName('input')[1];
+			editInput.className += user + uniqueDate;
+			editInput.addEventListener('change', function () {
+				var reqId = editInput.className;
+				console.log(reqId);
+				document.getElementById(reqId).innerHTML = editInput.value + ' <span class="time">' + date.getHours() + ':' + date.getMinutes() + '</span>';
+				editInput.remove();
+			});
+		}
+*/
+		socket.on('newMessage', function (data) {
+			if (user) {
+				time = new Date();
+				uniqueDate = time.getHours() + time.getMinutes() + time.getSeconds();
+				document.getElementById('message-container').innerHTML +='<div id="' + user + uniqueDate + '"><b>'
+				+ data.user + '</b>: ' + data.message + ' <span class="time">' + data.time + '</span></div>';
+				//+ '<button class="edit ' + user + '" id="' + user + '" onclick="editMessage()">edit</button>';
+			}
+		})
+	</script>
+	<div class="container">
+		<div class="row">
+			<div class="col-md-10">
+				<div id="error"></div>
+				<div class="form-group">
+					<label for="name"> Давай общаться</label>
+					<input type="text" class="form-control" id="name" placeholder="Введи свое имя незнакомец">
+					<button type="submit" class="btn btn-primary" name="button" onclick="setUserName()">Вперед!</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
